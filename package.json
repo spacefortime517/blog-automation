@@ -1,0 +1,19 @@
+{
+  "name": "blog-automation",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Automated blog post generation and social media distribution for PICKUP2",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dry-run": "node src/index.js --dry-run",
+    "english-only": "node src/index.js --language en --skip-social"
+  },
+  "dependencies": {
+    "@google/genai": "^1.46.0",
+    "dotenv": "^16.4.7",
+    "form-data": "^4.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "playwright": "^1.50.0"
+  }
+}
