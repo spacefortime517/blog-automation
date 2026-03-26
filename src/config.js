@@ -14,26 +14,6 @@ for (const key of required) {
   }
 }
 
-function buildGoogleCookies() {
-  // Parse GOOGLE_COOKIES env var: "name1=value1;name2=value2;..."
-  const raw = process.env.GOOGLE_COOKIES;
-  if (!raw) return null;
-
-  return raw.split(";").map((pair) => {
-    const eqIdx = pair.indexOf("=");
-    const name = pair.substring(0, eqIdx).trim();
-    const value = pair.substring(eqIdx + 1).trim();
-    return {
-      name,
-      value,
-      domain: ".google.com",
-      path: "/",
-      secure: true,
-      httpOnly: name.startsWith("__Secure-"),
-      sameSite: name.includes("3P") ? "None" : "Lax",
-    };
-  });
-}
 
 export const config = {
   backendUrl: process.env.BACKEND_URL,
@@ -57,9 +37,14 @@ export const config = {
     pageAccessToken: process.env.FB_PAGE_ACCESS_TOKEN,
   },
 
-  // LinkedIn (via Google SSO cookies)
+  // LinkedIn (API)
   linkedin: {
-    googleCookies: buildGoogleCookies(),
+    clientId: process.env.LINKEDIN_CLIENT_ID,
+    clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
+    accessToken: process.env.LINKEDIN_ACCESS_TOKEN,
+    refreshToken: process.env.LINKEDIN_REFRESH_TOKEN,
+    orgId: process.env.LINKEDIN_ORG_ID,
+    personId: process.env.LINKEDIN_PERSON_ID,
   },
 
   // Constants

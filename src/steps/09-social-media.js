@@ -50,7 +50,10 @@ export async function stepSocialMedia(ai, article, slug) {
     const liText = posts.linkedin?.includes(articleUrl)
       ? posts.linkedin
       : `${posts.linkedin}\n\n${articleUrl}`;
-    results.linkedin = await postToLinkedIn(liText);
+    results.linkedin = await postToLinkedIn(liText, articleUrl, {
+      title: article.title,
+      description: article.description,
+    });
   } catch (error) {
     logger.error(`LinkedIn posting failed: ${error.message}`);
   }

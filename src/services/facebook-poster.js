@@ -17,7 +17,7 @@ export async function postToFacebook(message, link) {
 
   logger.info("Posting to Facebook Page...");
 
-  const url = `https://graph.facebook.com/v22.0/${pageId}/feed`;
+  const url = `https://graph.facebook.com/v25.0/${pageId}/feed`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

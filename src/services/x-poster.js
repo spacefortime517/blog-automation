@@ -3,10 +3,9 @@ import { config } from "../config.js";
 import { logger } from "../utils/logger.js";
 
 /**
- * Post a tweet to X/Twitter using browser cookie injection.
- * Refactored from /Applications/PICKUP2/x-bot/index.js
+ * Post a tweet to X/Twitter using Playwright with cookie injection.
  * @param {string} text - Tweet text
- * @returns {string} Tweet ID
+ * @returns {string|null} Tweet ID or "posted"
  */
 export async function postToX(text) {
   const { authToken, ct0, kdt, twid } = config.x;
@@ -19,7 +18,7 @@ export async function postToX(text) {
   logger.info("Posting to X/Twitter...");
 
   const browser = await chromium.launch({
-    headless: true,
+    headless: false,
     args: ["--disable-blink-features=AutomationControlled", "--no-sandbox"],
   });
 
@@ -29,71 +28,19 @@ export async function postToX(text) {
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     });
 
-    // Hide automation markers
     await context.addInitScript(() => {
       Object.defineProperty(navigator, "webdriver", { get: () => false });
-      Object.defineProperty(navigator, "languages", {
-        get: () => ["en-US", "en"],
-      });
-      Object.defineProperty(navigator, "plugins", {
-        get: () => [1, 2, 3, 4, 5],
-      });
-      const originalQuery = window.navigator.permissions.query;
-      window.navigator.permissions.query = (params) =>
-        params.name === "notifications"
-          ? Promise.resolve({ state: Notification.permission })
-          : originalQuery(params);
+      Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
       delete window.__playwright;
       delete window.__pw_manual;
     });
 
-    // Inject session cookies
     await context.addCookies([
-      {
-        name: "auth_token",
-        value: authToken,
-        domain: ".x.com",
-        path: "/",
-        httpOnly: true,
-        secure: true,
-        sameSite: "None",
-      },
-      {
-        name: "ct0",
-        value: ct0,
-        domain: ".x.com",
-        path: "/",
-        httpOnly: false,
-        secure: true,
-        sameSite: "Lax",
-      },
-      {
-        name: "kdt",
-        value: kdt || "",
-        domain: ".x.com",
-        path: "/",
-        httpOnly: true,
-        secure: true,
-        sameSite: "None",
-      },
-      {
-        name: "twid",
-        value: twid || "",
-        domain: ".x.com",
-        path: "/",
-        httpOnly: true,
-        secure: true,
-        sameSite: "None",
-      },
-      {
-        name: "lang",
-        value: "en",
-        domain: "x.com",
-        path: "/",
-        httpOnly: false,
-        secure: false,
-        sameSite: "Lax",
-      },
+      { name: "auth_token", value: authToken, domain: ".x.com", path: "/", httpOnly: true, secure: true, sameSite: "None" },
+      { name: "ct0", value: ct0, domain: ".x.com", path: "/", httpOnly: false, secure: true, sameSite: "Lax" },
+      { name: "kdt", value: kdt || "", domain: ".x.com", path: "/", httpOnly: true, secure: true, sameSite: "None" },
+      { name: "twid", value: twid || "", domain: ".x.com", path: "/", httpOnly: true, secure: true, sameSite: "None" },
+      { name: "lang", value: "en", domain: "x.com", path: "/", httpOnly: false, secure: false, sameSite: "Lax" },
     ]);
 
     const page = await context.newPage();
@@ -101,10 +48,8 @@ export async function postToX(text) {
     // Capture API response
     let result = null;
     page.on("response", async (res) => {
-      if (res.url().includes("/CreateTweet")) {
-        try {
-          result = await res.json();
-        } catch {}
+      if (res.url().includes("CreateTweet")) {
+        try { result = await res.json(); } catch {}
       }
     });
 
@@ -112,54 +57,61 @@ export async function postToX(text) {
       waitUntil: "domcontentloaded",
       timeout: 60000,
     });
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(4000);
 
     if (page.url().includes("/login") || page.url().includes("/i/flow")) {
-      throw new Error(
-        "X cookies expired. Update .env with fresh cookies from browser DevTools."
-      );
+      throw new Error("X cookies expired. Update .env with fresh cookies.");
     }
 
-    // Type tweet
-    const dialog = page.locator(
-      '[role="dialog"] [data-testid="tweetTextarea_0"]'
-    );
-    if (await dialog.isVisible().catch(() => false)) {
-      await dialog.click();
-    } else {
-      await page
-        .locator('[data-testid="tweetTextarea_0"]')
-        .first()
-        .click();
-    }
-    await page.keyboard.type(text, { delay: 50 });
+    // Dismiss cookie banner if present
+    await page.evaluate(() => {
+      const btns = [...document.querySelectorAll('button, [role="button"]')];
+      const reject = btns.find(b => b.textContent?.includes("Refuse non-essential"));
+      if (reject) reject.click();
+    });
     await page.waitForTimeout(1000);
 
-    // Click post
-    const dialogBtn = page.locator(
-      '[role="dialog"] [data-testid="tweetButton"]'
-    );
-    if (await dialogBtn.isVisible().catch(() => false)) {
-      await dialogBtn.click();
-    } else {
-      await page.locator('[data-testid="tweetButton"]').first().click();
+    // Click into the tweet textarea using JavaScript
+    await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="tweetTextarea_0"]');
+      if (el) {
+        el.focus();
+        el.click();
+      }
+    });
+    await page.waitForTimeout(500);
+
+    // Type the tweet text
+    await page.keyboard.type(text, { delay: 30 });
+    await page.waitForTimeout(1500);
+
+    // Click the Post button using JavaScript
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="tweetButton"]');
+      if (btn) btn.click();
+    });
+
+    await page.waitForTimeout(8000);
+
+    // Check result
+    if (result) {
+      const tweet = result.data?.create_tweet?.tweet_results?.result;
+      if (tweet) {
+        const tweetId = tweet.rest_id;
+        logger.info(`Posted to X: https://x.com/i/status/${tweetId}`);
+        return tweetId;
+      }
+      const err = result.errors?.[0]?.message;
+      if (err) throw new Error(err);
     }
 
-    await page.waitForTimeout(5000);
-
-    // Verify
-    if (!result) throw new Error("No API response captured from X.");
-
-    const tweet = result.data?.create_tweet?.tweet_results?.result;
-    if (tweet) {
-      const tweetId = tweet.rest_id;
-      logger.info(`Posted to X: https://x.com/i/status/${tweetId}`);
-      return tweetId;
+    // Fallback: check if we left the compose page (tweet was sent)
+    if (!page.url().includes("/compose")) {
+      logger.info("Tweet likely posted (navigated away from compose)");
+      return "posted";
     }
 
-    const err =
-      result.errors?.[0]?.message || JSON.stringify(result).substring(0, 200);
-    throw new Error(err);
+    throw new Error("Could not confirm tweet was posted");
   } finally {
     await browser.close();
   }
