@@ -37,6 +37,12 @@ export const config = {
     pageAccessToken: process.env.FB_PAGE_ACCESS_TOKEN,
   },
 
+  // Instagram
+  instagram: {
+    userId: process.env.INSTAGRAM_USER_ID,
+    accessToken: process.env.INSTAGRAM_ACCESS_TOKEN || process.env.FB_PAGE_ACCESS_TOKEN,
+  },
+
   // LinkedIn (API)
   linkedin: {
     clientId: process.env.LINKEDIN_CLIENT_ID,

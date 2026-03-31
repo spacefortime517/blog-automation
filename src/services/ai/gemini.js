@@ -17,25 +17,47 @@ export class GeminiProvider extends AIProvider {
   }
 
   /**
-   * Call Gemini with automatic key rotation on 429.
+   * Call Gemini with automatic key rotation on 429 and retry on transient errors (500/502/503).
    * @param {Function} fn - Receives (client) and should return the API result
    */
   async _callWithRotation(fn) {
-    const maxAttempts = this.rotator.keys.length + 1;
-    for (let i = 0; i < maxAttempts; i++) {
-      try {
-        return await fn(this._getClient());
-      } catch (error) {
-        const is429 =
-          error.status === 429 ||
-          error.message?.includes("429") ||
-          error.message?.includes("RESOURCE_EXHAUSTED");
-        if (is429 && this.rotator.rotate()) {
-          logger.warn("Rate limited, switched to next API key");
-          await sleep(2000);
-          continue;
+    const maxKeyAttempts = this.rotator.keys.length + 1;
+    const maxTransientRetries = 3;
+
+    for (let keyAttempt = 0; keyAttempt < maxKeyAttempts; keyAttempt++) {
+      for (let retry = 0; retry < maxTransientRetries; retry++) {
+        try {
+          return await fn(this._getClient());
+        } catch (error) {
+          const msg = error.message || "";
+          const status = error.status || 0;
+
+          // Rate limited → rotate key
+          const is429 = status === 429 || msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED");
+          if (is429) {
+            if (this.rotator.rotate()) {
+              logger.warn("Rate limited, switched to next API key");
+              await sleep(2000);
+            }
+            break; // break retry loop, continue key loop
+          }
+
+          // Transient server error → retry with backoff
+          const isTransient =
+            status === 503 || status === 500 || status === 502 ||
+            msg.includes("503") || msg.includes("UNAVAILABLE") ||
+            msg.includes("500") || msg.includes("502") ||
+            msg.includes("overloaded") || msg.includes("high demand");
+
+          if (isTransient && retry < maxTransientRetries - 1) {
+            const delay = Math.min(5000 * Math.pow(2, retry), 30000);
+            logger.warn(`Transient error (attempt ${retry + 1}/${maxTransientRetries}): ${msg.substring(0, 120)}. Retrying in ${delay}ms...`);
+            await sleep(delay);
+            continue;
+          }
+
+          throw error;
         }
-        throw error;
       }
     }
     throw new Error("All Gemini API keys exhausted");
@@ -89,13 +111,28 @@ Requirements:
 - description: 150-200 character SEO meta description
 - keywords: 5-8 relevant keywords as a JSON array of strings
 - categories: one or more of ["shippers", "forwarders", "carriers", "managers", "general"]
-- content: 800-1200 words in Markdown format
-  - Use ## for subheadings (not #)
-  - After the 3rd paragraph, include this exact CTA on its own line:
-    <!--BaseButton {"text":"Try Pickup2 Free","color":"#007bff"} -->
-  - End with a conclusion paragraph
-  - Professional, informative tone
-  - Reference how the Pickup2 platform helps where relevant (subtly, not salesy)
+- content: 500-700 words MAXIMUM in Markdown format. STRICT limit — do NOT exceed 700 words.
+
+  CONTENT STRUCTURE (follow this EXACTLY):
+
+  1. Start with a ### intro line (one sentence, sets the scene — this gets drop-cap styling)
+  2. First paragraph (2-3 sentences expanding on the intro)
+  3. ## Section Heading
+     Body paragraphs (3-4 sentences each). Bullet lists are OK inside sections.
+  4. ## Another Section Heading
+     More content. After the 3rd paragraph in the article, include this exact CTA on its own line:
+     <!--BaseButton {"text":"Try Pickup2 Free","color":"#007bff"} -->
+  5. ## Conclusion
+     Short closing paragraph (2-3 sentences)
+
+  FORMATTING RULES:
+  - Use ### ONLY ONCE — the very first line of content (the intro). Never use ### anywhere else.
+  - Use ## for all section headings. Never use # or ####.
+  - Bullet lists (using -) are allowed inside sections, but NEVER immediately after a ### line. Always put a full paragraph between ### and any list.
+  - Keep paragraphs concise: 3-4 sentences max.
+  - Professional, informative tone focused on the NEWS.
+  - You may mention Pickup2 ONCE in the conclusion (e.g., "platforms like Pickup2 help logistics companies adapt"). Do NOT dedicate a section to Pickup2.
+
 - slug: URL-friendly slug (lowercase, hyphens, no special chars, no trailing hyphens)
 
 Return ONLY a JSON object with these fields: { "title", "description", "keywords", "categories", "content", "slug" }
@@ -209,20 +246,82 @@ No markdown fences. No explanation. Just the JSON.`;
   async generateSocialPost(title, description, url) {
     logger.info("Generating social media post text...");
 
-    const prompt = `Write social media posts for a logistics industry blog article.
+    try {
+      const prompt = `Write social media posts for a logistics industry blog article.
 
 Article title: "${title}"
 Description: "${description}"
 URL: ${url}
 
-Generate posts for 3 platforms. Return ONLY a JSON object:
+Generate platform-optimized posts. Return ONLY a JSON object:
 {
-  "twitter": "tweet text max 260 chars (leave room for URL). Include 3-4 hashtags like #EULogistics #FreightTech",
-  "facebook": "Facebook post 2-3 sentences. Professional tone. Include the URL. Add relevant hashtags.",
-  "linkedin": "LinkedIn post 3-4 sentences. Professional/industry tone. Include the URL. Add relevant hashtags."
+  "twitter": "Short, punchy tweet. MAX 90 characters (excluding URL — URL will be appended separately). Include 1-2 hashtags only (e.g. #EULogistics). No links in the text.",
+  "facebook": "Facebook post: 2-3 sentences. Conversational professional tone. Start with a compelling question or statistic. Include the URL. 1-2 hashtags max.",
+  "linkedin": "LinkedIn post: 3-5 sentences. Thought-leadership tone for logistics professionals. Open with a strong hook (insight, stat, or question). Do NOT include the article URL in the text (it will be attached as a rich card). End with 3 hashtags: 2 broad (#Logistics #SupplyChain) + 1 niche.",
+  "instagram": "Instagram caption: 2-3 sentences. Engaging, visual tone. Open with a hook. Include the URL at the end. End with 5-8 relevant hashtags (mix of broad like #Logistics #SupplyChain and niche). Use line breaks between text and hashtags."
 }
 
 No markdown fences. No explanation. Just the JSON.`;
+
+      const result = await this._callWithRotation(async (ai) => {
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash-lite",
+          contents: prompt,
+        });
+        return response.text;
+      });
+
+      return this._parseJSON(result);
+    } catch (error) {
+      logger.warn(`Gemini social post generation failed: ${error.message}. Using template fallback.`);
+      return this._fallbackSocialPost(title, description, url);
+    }
+  }
+
+  /** Template-based fallback when AI is unavailable for social post generation */
+  _fallbackSocialPost(title, description, url) {
+    const shortDesc = description.length > 100 ? description.substring(0, 97) + "..." : description;
+    return {
+      twitter: `${title} #EULogistics #SupplyChain`,
+      facebook: `${title}\n\n${shortDesc}\n\nRead more: ${url}\n\n#Logistics #EUTransport`,
+      linkedin: `${title}\n\n${description}\n\nStay informed on the latest developments shaping European logistics.\n\n#Logistics #SupplyChain #EUTransport`,
+      instagram: `${title}\n\n${shortDesc}\n\nRead more: ${url}\n\n#Logistics #SupplyChain #EUTransport #FreightForwarding #TruckingIndustry`,
+    };
+  }
+
+  async checkTopicSimilarity(candidateTitle, candidateSummary, existingArticles) {
+    const recentArticles = existingArticles.slice(0, 50);
+    const articleList = recentArticles
+      .map((a, i) => `${i + 1}. "${a.title}" — ${a.description || ""}`)
+      .join("\n");
+
+    const prompt = `You are a duplicate content detector. Compare this candidate blog topic against existing published articles and determine if it covers the SAME or VERY SIMILAR news/subject.
+
+CANDIDATE TOPIC:
+Title: "${candidateTitle}"
+Summary: "${candidateSummary}"
+
+EXISTING PUBLISHED ARTICLES:
+${articleList}
+
+A topic is "too similar" if:
+- It covers the same specific news event or announcement
+- It would substantially repeat information already in an existing article
+- A reader would feel they're reading the same story again
+
+A topic is NOT too similar if:
+- It covers the same broad category (e.g. both about EU logistics) but different specific events
+- It provides a genuinely new angle or update on a developing story with significant new information
+
+Return ONLY a JSON object:
+{
+  "isSimilar": true/false,
+  "score": <0-100 similarity score, 0=completely different, 100=identical topic>,
+  "matchedTitle": "<title of the most similar existing article, or null>",
+  "reason": "<brief explanation>"
+}
+
+No markdown fences. No explanation outside the JSON.`;
 
     const result = await this._callWithRotation(async (ai) => {
       const response = await ai.models.generateContent({
@@ -232,7 +331,12 @@ No markdown fences. No explanation. Just the JSON.`;
       return response.text;
     });
 
-    return this._parseJSON(result);
+    const parsed = this._parseJSON(result);
+    // Treat score >= 60 as too similar
+    if (parsed.score >= 60) {
+      parsed.isSimilar = true;
+    }
+    return parsed;
   }
 
   /** Parse JSON from LLM response, stripping markdown fences if present */

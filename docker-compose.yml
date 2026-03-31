@@ -1,0 +1,12 @@
+services:
+  blog-bot:
+    build: .
+    container_name: blog-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TZ=Europe/Berlin
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./.linkedin-tokens.json:/app/.linkedin-tokens.json

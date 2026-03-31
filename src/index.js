@@ -1,3 +1,6 @@
+import { writeFileSync, mkdirSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import { config } from "./config.js";
 import { logger } from "./utils/logger.js";
 import { getAIProvider } from "./services/ai/provider.js";
@@ -10,6 +13,9 @@ import { stepPublishEnglish } from "./steps/06-publish-english.js";
 import { stepTranslate } from "./steps/07-translate.js";
 import { stepPublishTranslations } from "./steps/08-publish-translations.js";
 import { stepSocialMedia } from "./steps/09-social-media.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PENDING_FILE = join(__dirname, "../data/pending-social.json");
 
 // Parse CLI flags
 const args = process.argv.slice(2);
@@ -84,13 +90,35 @@ async function main() {
   }
 
   // Step 9: Social media
+  const articleUrl = `${config.siteUrl}/blog/${article.slug}`;
   if (!skipSocial) {
-    await stepSocialMedia(ai, article, article.slug);
+    if (args.includes("--post-now")) {
+      // Post immediately to all platforms (legacy behavior, no pending file)
+      logger.step(9, "Posting to all platforms immediately (--post-now)");
+      await stepSocialMedia(ai, article, article.slug, imgUrl);
+    } else {
+      // Save pending social data for staggered posting via cron
+      const pendingData = {
+        createdAt: new Date().toISOString(),
+        articleUrl,
+        imgUrl: imgUrl || "",
+        article: {
+          title: article.title,
+          description: article.description,
+          slug: article.slug,
+        },
+        posts: null, // Generated on first social post
+        posted: {},
+      };
+      mkdirSync(join(__dirname, "../data"), { recursive: true });
+      writeFileSync(PENDING_FILE, JSON.stringify(pendingData, null, 2));
+      logger.step(9, "Pending social data saved. Posts will be staggered via cron.");
+    }
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   logger.info(`\n=== Pipeline completed successfully in ${elapsed}s ===`);
-  logger.info(`Article: ${config.siteUrl}/blog/${article.slug}`);
+  logger.info(`Article: ${articleUrl}`);
 }
 
 main().catch((error) => {

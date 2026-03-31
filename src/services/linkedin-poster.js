@@ -93,9 +93,41 @@ async function linkedinRequest(url, options, tokens) {
 }
 
 /**
+ * Add a comment to a LinkedIn post (used to put article link in first comment).
+ * @param {string} postUrn - The post URN
+ * @param {string} commentText - Comment text
+ * @param {object} tokens - Auth tokens
+ * @param {string} author - Author URN
+ */
+async function addComment(postUrn, commentText, tokens, author) {
+  const encodedUrn = encodeURIComponent(postUrn);
+  const res = await linkedinRequest(
+    `https://api.linkedin.com/rest/socialActions/${encodedUrn}/comments`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        actor: author,
+        message: { text: commentText },
+      }),
+    },
+    tokens
+  );
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    logger.warn(`LinkedIn comment failed (${res.status}): ${errorData.message || JSON.stringify(errorData)}`);
+    return null;
+  }
+
+  logger.info("LinkedIn: article link added as first comment");
+  return true;
+}
+
+/**
  * Post to LinkedIn using the Posts API.
+ * Posts text-only for better reach, then adds article link as first comment.
  * @param {string} text - Post commentary text
- * @param {string} [articleUrl] - Optional article URL for rich link preview
+ * @param {string} [articleUrl] - Article URL (added as first comment)
  * @param {object} [articleMeta] - Optional article metadata { title, description }
  * @returns {string|null} Post URN, or null if not configured
  */
@@ -127,7 +159,7 @@ export async function postToLinkedIn(text, articleUrl, articleMeta) {
     isReshareDisabledByAuthor: false,
   };
 
-  // Add article content for rich link preview
+  // Attach article as rich link card
   if (articleUrl) {
     body.content = {
       article: {
@@ -150,7 +182,7 @@ export async function postToLinkedIn(text, articleUrl, articleMeta) {
     throw new Error(`LinkedIn API error (${res.status}): ${errMsg}`);
   }
 
-  const postId = res.headers.get("x-restli-id");
-  logger.info(`Posted to LinkedIn: ${postId}`);
-  return postId;
+  const postUrn = res.headers.get("x-restli-id");
+  logger.info(`Posted to LinkedIn: ${postUrn}`);
+  return postUrn;
 }

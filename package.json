@@ -6,8 +6,13 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "start:now": "node src/index.js --post-now",
     "dry-run": "node src/index.js --dry-run",
-    "english-only": "node src/index.js --language en --skip-social"
+    "english-only": "node src/index.js --language en --skip-social",
+    "social": "node src/post-social.js all",
+    "social:linkedin": "node src/post-social.js linkedin",
+    "social:x": "node src/post-social.js x",
+    "social:facebook": "node src/post-social.js facebook"
   },
   "dependencies": {
     "@google/genai": "^1.46.0",

@@ -18,7 +18,7 @@ export async function postToX(text) {
   logger.info("Posting to X/Twitter...");
 
   const browser = await chromium.launch({
-    headless: false,
+    headless: !process.env.DISPLAY,
     args: ["--disable-blink-features=AutomationControlled", "--no-sandbox"],
   });
 

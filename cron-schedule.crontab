@@ -1,0 +1,21 @@
+# Blog Automation - Tue & Thu staggered posting (CET — Europe/Berlin)
+# Install (VPS):  crontab -u blogbot /opt/blog-automation/cron-schedule.crontab
+# Install (local): crontab /Applications/PICKUP2/BlogAutomation/cron-schedule.crontab
+
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# Tuesday & Thursday: Publish blog at 09:00 (gives 1h buffer before LinkedIn)
+0 9 * * 2,4 /opt/blog-automation/cron-schedule.sh publish
+
+# Tuesday & Thursday: LinkedIn at 10:00
+0 10 * * 2,4 /opt/blog-automation/cron-schedule.sh linkedin
+
+# Tuesday & Thursday: X/Twitter at 12:00
+0 12 * * 2,4 /opt/blog-automation/cron-schedule.sh x
+
+# Tuesday & Thursday: Facebook at 15:00
+0 15 * * 2,4 /opt/blog-automation/cron-schedule.sh facebook
+
+# Tuesday & Thursday: Instagram at 17:00
+0 17 * * 2,4 /opt/blog-automation/cron-schedule.sh instagram

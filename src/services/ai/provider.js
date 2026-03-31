@@ -29,6 +29,11 @@ class AIProvider {
   async generateSocialPost(title, description, url) {
     throw new Error("generateSocialPost() not implemented");
   }
+
+  /** Check if a candidate topic is too similar to existing articles. Returns { isSimilar, score, matchedTitle, reason } */
+  async checkTopicSimilarity(candidateTitle, candidateSummary, existingArticles) {
+    throw new Error("checkTopicSimilarity() not implemented");
+  }
 }
 
 /**

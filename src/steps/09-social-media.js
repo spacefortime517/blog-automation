@@ -3,15 +3,17 @@ import { logger } from "../utils/logger.js";
 import { postToX } from "../services/x-poster.js";
 import { postToFacebook } from "../services/facebook-poster.js";
 import { postToLinkedIn } from "../services/linkedin-poster.js";
+import { postToInstagram } from "../services/instagram-poster.js";
 
 /**
  * Step 9: Post to social media platforms.
  * @param {object} ai - AIProvider instance
  * @param {object} article - English article
  * @param {string} slug - Article slug
- * @returns {object} Results per platform { x, facebook, linkedin }
+ * @param {string} [imgUrl] - Public image URL for image-based platforms
+ * @returns {object} Results per platform { x, facebook, linkedin, instagram }
  */
-export async function stepSocialMedia(ai, article, slug) {
+export async function stepSocialMedia(ai, article, slug, imgUrl) {
   logger.step(9, "Posting to social media...");
 
   const articleUrl = `${config.siteUrl}/blog/${slug}`;
@@ -23,7 +25,7 @@ export async function stepSocialMedia(ai, article, slug) {
     articleUrl
   );
 
-  const results = { x: null, facebook: null, linkedin: null };
+  const results = { x: null, facebook: null, linkedin: null, instagram: null };
 
   // X/Twitter
   try {
@@ -58,7 +60,17 @@ export async function stepSocialMedia(ai, article, slug) {
     logger.error(`LinkedIn posting failed: ${error.message}`);
   }
 
+  // Instagram
+  try {
+    const igCaption = posts.instagram?.includes(articleUrl)
+      ? posts.instagram
+      : `${posts.instagram}\n\n${articleUrl}`;
+    results.instagram = await postToInstagram(igCaption, imgUrl);
+  } catch (error) {
+    logger.error(`Instagram posting failed: ${error.message}`);
+  }
+
   const posted = Object.values(results).filter(Boolean).length;
-  logger.step(9, `Social media done: ${posted}/3 platforms posted`);
+  logger.step(9, `Social media done: ${posted}/4 platforms posted`);
   return results;
 }
