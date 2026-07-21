@@ -64,21 +64,33 @@ export class GeminiProvider extends AIProvider {
   }
 
   async searchNews(existingTopics) {
-    logger.info("Searching for latest EU logistics news via Gemini + Google Search...");
+    logger.info("Searching for latest EU logistics topics via Gemini + Google Search...");
 
     const existingList = existingTopics.map((t) => `- ${t}`).join("\n");
+    const themeList = config.topicThemes.map((t, i) => `${i + 1}. ${t}`).join("\n");
 
-    const prompt = `You are a logistics industry news researcher. Search for the latest EU news relevant to the European logistics, freight transport, and supply chain industry from the past 7 days.
+    const prompt = `You are the content researcher for a European freight-forwarding and road-transport blog. The audience is carriers, freight forwarders and shippers across Europe.
 
-Focus on: EU regulations affecting trucking/freight, cross-border transport changes, digital freight platforms, sustainability in logistics, driver shortages, toll systems, customs changes, road transport policy, freight exchange trends.
+The blog must cover a BALANCED MIX of these editorial themes over time:
+${themeList}
 
-DO NOT suggest topics that overlap with these existing blog articles:
+Search the web for material from the past 7 days. A candidate topic can be either:
+- NEWS: a fresh news event relevant to European logistics, OR
+- PRACTICAL: a timely practical guide or business topic for carriers, forwarders or shippers, tied to current market conditions, season, or a recent change
+
+RULES:
+- Return EXACTLY 6 candidate topics as a JSON array.
+- The candidates MUST span at least 4 DIFFERENT themes from the list above.
+- At MOST 1 candidate may be about digitalization, freight platforms or logistics tech.
+- The existing articles listed below start with the most recently published — actively avoid their themes so consecutive blog posts feel different.
+- DO NOT suggest topics that overlap with these existing blog articles:
 ${existingList}
 
-Return EXACTLY 3 candidate topics as a JSON array. Each object must have:
+Each object must have:
 - "title": engaging article title (under 80 chars)
-- "summary": 2-3 sentence summary of the news
-- "relevance": score 1-10 (how relevant to logistics companies)
+- "summary": 2-3 sentence summary of the news or practical angle
+- "theme": the theme from the list it belongs to (short phrase)
+- "relevance": score 1-10 (how relevant and useful to European carriers, forwarders and shippers)
 - "sources": array of source names
 
 Respond with ONLY the JSON array, no markdown fences, no explanation.`;
@@ -102,8 +114,21 @@ Respond with ONLY the JSON array, no markdown fences, no explanation.`;
 
     const prompt = `Write a professional blog article for Pickup2, a digital freight exchange platform for European logistics.
 
+ABOUT PICKUP2 (the only facts you may use when mentioning the platform):
+- Freight exchange where shippers, freight forwarders and carriers post and find loads across Europe (FTL/LTL, multi-stop routes, vehicle requirements, temperature-controlled)
+- Carriers publish available vehicle capacity (fleet offers) to fill empty runs and find return loads
+- Bidding and negotiation on loads and capacity, with built-in real-time chat between companies
+- Company verification (EU VAT/VIES checks, document review) so users deal with verified partners
+- Post-transaction company ratings and reviews
+- Loads can be published to the public exchange or privately to selected partner companies
+- Fleet/vehicle management and team management with roles and per-employee permissions (dispatcher, driver, forwarder, manager)
+- Mobile apps (iOS and Android) with push notifications for bids, chats and deals
+- Free to get started
+Do NOT claim features beyond this list (no tracking, no payment protection, no AI matching).
+
 Topic: ${topic.title}
 Context: ${topic.summary}
+${topic.theme ? `Theme: ${topic.theme}` : ""}
 ${topic.sources ? `Sources: ${topic.sources.join(", ")}` : ""}
 
 Requirements:
@@ -130,8 +155,12 @@ Requirements:
   - Use ## for all section headings. Never use # or ####.
   - Bullet lists (using -) are allowed inside sections, but NEVER immediately after a ### line. Always put a full paragraph between ### and any list.
   - Keep paragraphs concise: 3-4 sentences max.
-  - Professional, informative tone focused on the NEWS.
-  - You may mention Pickup2 ONCE in the conclusion (e.g., "platforms like Pickup2 help logistics companies adapt"). Do NOT dedicate a section to Pickup2.
+  - Professional, informative tone. For news topics, focus on the news and what it means for the reader's business. For practical/guide topics, give concrete, actionable advice a carrier, forwarder or shipper can apply.
+  MENTIONING PICKUP2:
+  - If the topic naturally relates to something in the ABOUT PICKUP2 list (finding loads or capacity, reducing empty runs, verified partners, ratings, negotiating rates, digitalizing transport processes, team/fleet management), weave in ONE brief mention of how Pickup2 helps within a relevant body section — one sentence, woven into the advice or analysis, never salesy.
+  - Additionally, you may mention Pickup2 ONCE in the conclusion (e.g., "platforms like Pickup2 help logistics companies adapt").
+  - If the topic has NO natural connection to a freight exchange, mention Pickup2 ONLY in the conclusion. Never force it.
+  - Maximum 2 mentions total. Do NOT dedicate a section to Pickup2. Only reference capabilities from the ABOUT PICKUP2 list — never invent features.
 
 - slug: URL-friendly slug (lowercase, hyphens, no special chars, no trailing hyphens)
 

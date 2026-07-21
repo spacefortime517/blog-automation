@@ -39,7 +39,7 @@ export async function stepDiscoverTopic(ai, existingArticles) {
     for (const candidate of candidates) {
       logger.step(
         2,
-        `Checking candidate (relevance ${candidate.relevance}/10): "${candidate.title}"`
+        `Checking candidate (relevance ${candidate.relevance}/10, theme: ${candidate.theme || "n/a"}): "${candidate.title}"`
       );
 
       const similarity = await ai.checkTopicSimilarity(
@@ -57,7 +57,7 @@ export async function stepDiscoverTopic(ai, existingArticles) {
 
       logger.step(
         2,
-        `Selected topic (relevance ${candidate.relevance}/10, similarity ${similarity.score}/100): "${candidate.title}"`
+        `Selected topic (relevance ${candidate.relevance}/10, theme: ${candidate.theme || "n/a"}, similarity ${similarity.score}/100): "${candidate.title}"`
       );
       return candidate;
     }
