@@ -6,6 +6,26 @@ Writes evergreen removals content — packing, customs and Transfer of Residence
 
 ---
 
+## Running it
+
+Hosted on GitHub Actions — no server. The workflow in
+`.github/workflows/publish-blog.yml` runs on a schedule and can also be
+triggered by hand from the Actions tab, with a dry-run option.
+
+Playwright is only needed by the X/Twitter poster, which is off, so the
+workflow installs no browser and the run is plain Node.
+
+Required repository secrets (Settings -> Secrets and variables -> Actions):
+
+| Secret | What it is |
+| --- | --- |
+| `BACKEND_URL` | e.g. `https://api.space4timeltd.eu` |
+| `ACCESS_TOKEN_SECRET` | same value as the Server, used to sign the admin JWT |
+| `ADMIN_USER_ID` | the user id articles are published as |
+| `GEMINI_API_KEYS` | one or more keys, comma separated; they are rotated |
+| `MINIMAX_API_KEY` | hero image generation |
+| `SITE_URL` | `https://space4timeltd.eu` |
+
 ## Schedule
 
 Three posts per week — Monday, Wednesday and Friday at 09:00 CET — published to

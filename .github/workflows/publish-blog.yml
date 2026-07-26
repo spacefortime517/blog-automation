@@ -1,0 +1,61 @@
+name: Publish blog article
+
+# Three articles a week, website only. Times are UTC — GitHub does not do
+# local time — so these are 08:00 UTC, which is 09:00 CET / 10:00 CEST.
+# The hour drifts by one across daylight saving; for a blog that is fine.
+on:
+  schedule:
+    - cron: "0 8 * * 1,3,5"
+  # Lets you trigger a run by hand from the Actions tab to test it.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Generate but publish nothing"
+        type: boolean
+        default: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # One article takes a few minutes, mostly the 11 translations. The cap stops
+    # a hung API call burning the monthly minutes.
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # Playwright is only needed by the X/Twitter poster, which is off, so no
+      # browser is installed here. That keeps the run to a plain Node job.
+      - name: Install dependencies
+        run: npm ci --omit=optional
+
+      - name: Publish article
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+          ADMIN_USER_ID: ${{ secrets.ADMIN_USER_ID }}
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+          TZ: Europe/Berlin
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            npm run dry-run
+          else
+            npm start
+          fi
+
+      # Keep the log of a failed run so the cause is visible after the fact.
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blog-logs-${{ github.run_id }}
+          path: logs/
+          if-no-files-found: ignore
+          retention-days: 14
