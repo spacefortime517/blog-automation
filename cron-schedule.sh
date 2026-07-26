@@ -1,12 +1,11 @@
 #!/bin/bash
 # Blog Automation Cron Schedule (CET — Europe/Berlin)
 #
-# Schedule: Tuesday & Thursday
+# Schedule: Monday, Wednesday & Friday
 #   09:00 - Publish blog (discover topic, generate, translate, publish)
-#   10:00 - Post to LinkedIn
-#   12:00 - Post to X/Twitter (uses xvfb for virtual display)
-#   15:00 - Post to Facebook
-#   17:00 - Post to Instagram
+#
+# Social media posting is off. The publish run writes to the website only;
+# the linkedin/x/facebook/instagram cases below remain for manual use.
 #
 # Install: crontab cron-schedule.crontab
 # Check:   crontab -l

@@ -20,6 +20,9 @@ export const config = {
   accessTokenSecret: process.env.ACCESS_TOKEN_SECRET,
   adminUserId: process.env.ADMIN_USER_ID,
   aiProvider: process.env.AI_PROVIDER || "gemini",
+  // Social posting is OFF unless explicitly turned on. The blog publishes to
+  // the website only; social is opt-in per run or via this flag.
+  enableSocial: process.env.ENABLE_SOCIAL === "true",
   geminiApiKeys: process.env.GEMINI_API_KEYS.split(",").map((k) => k.trim()),
   siteUrl: process.env.SITE_URL || "https://space4timeltd.eu",
 

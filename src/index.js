@@ -20,7 +20,12 @@ const PENDING_FILE = join(__dirname, "../data/pending-social.json");
 // Parse CLI flags
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
-const skipSocial = args.includes("--skip-social");
+// Social posting is opt-in, not opt-out. Publishing to the website is the job;
+// posting to five networks is a separate decision that should never happen by
+// accident because a flag was forgotten in a cron line.
+const socialEnabled =
+  (args.includes("--with-social") || config.enableSocial) &&
+  !args.includes("--skip-social");
 const singleLang = args.find((a) => a.startsWith("--language="))?.split("=")[1]
   || (args.includes("--language") ? args[args.indexOf("--language") + 1] : null);
 
@@ -28,7 +33,11 @@ async function main() {
   const startTime = Date.now();
   logger.info("=== BlogAutomation Pipeline Starting ===");
   if (dryRun) logger.info("DRY RUN MODE — no publishing, no social media");
-  if (skipSocial) logger.info("Social media posting skipped (--skip-social)");
+  logger.info(
+    socialEnabled
+      ? "Social media posting ENABLED for this run"
+      : "Website only — social media posting is off (enable with --with-social)"
+  );
   if (singleLang) logger.info(`Single language mode: ${singleLang}`);
 
   // Step 1: Authenticate
@@ -91,7 +100,7 @@ async function main() {
 
   // Step 9: Social media
   const articleUrl = `${config.siteUrl}/blog/${article.slug}`;
-  if (!skipSocial) {
+  if (socialEnabled) {
     if (args.includes("--post-now")) {
       // Post immediately to all platforms (legacy behavior, no pending file)
       logger.step(9, "Posting to all platforms immediately (--post-now)");

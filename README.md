@@ -6,6 +6,22 @@ Writes evergreen removals content — packing, customs and Transfer of Residence
 
 ---
 
+## Schedule
+
+Three posts per week — Monday, Wednesday and Friday at 09:00 CET — published to
+the website only. Each run discovers a topic, writes the English article,
+generates a hero image, publishes it, then translates and publishes the other
+11 languages.
+
+Social media posting is **off**. It is opt-in rather than opt-out so that a
+forgotten flag in a cron line cannot post to five networks by accident:
+
+```bash
+npm start                 # website only (what cron runs)
+npm run start:with-social # website + social
+npm run dry-run           # generate and print, publish nothing
+```
+
 ## What It Does
 
 The pipeline runs a **9-step automated process** that:
