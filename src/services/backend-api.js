@@ -53,20 +53,20 @@ async function apiCall(method, path, body = null, extraHeaders = {}) {
 
 /** Verify auth works by fetching articles */
 export async function verifyAuth() {
-  const result = await apiCall("GET", "/admin/articles?language=en");
+  const result = await apiCall("GET", "/admin/blog/articles?language=en");
   logger.info(`Auth verified. Found ${result.data?.length || 0} English articles.`);
   return result.data || [];
 }
 
 /** Get all English articles (for deduplication) */
 export async function getEnglishArticles() {
-  const result = await apiCall("GET", "/admin/articles?language=en");
+  const result = await apiCall("GET", "/admin/blog/articles?language=en");
   return result.data || [];
 }
 
 /** Get next sequential article ID */
 export async function getNextId() {
-  const result = await apiCall("GET", "/admin/next-id");
+  const result = await apiCall("GET", "/admin/blog/next-id");
   logger.info(`Next article ID: ${result.nextId}`);
   return result.nextId;
 }
@@ -74,7 +74,7 @@ export async function getNextId() {
 /** Create a new blog article */
 export async function createArticle(articleData) {
   return withRetry(
-    () => apiCall("POST", "/admin/create-article", articleData),
+    () => apiCall("POST", "/admin/blog/create-article", articleData),
     { maxRetries: 3, label: `createArticle(${articleData.language})` }
   );
 }
@@ -85,7 +85,7 @@ export async function uploadImage(imageBuffer, filename = "blog-hero.png") {
   const form = new globalThis.FormData();
   form.append("images", blob, filename);
 
-  const url = `${config.backendUrl}/admin/upload-images`;
+  const url = `${config.backendUrl}/admin/blog/upload-images`;
   const result = await withRetry(
     async () => {
       const res = await fetch(url, {
