@@ -1,6 +1,8 @@
 # BlogAutomation - PICKUP2
 
-Automated blog post generation and multilingual distribution pipeline for [PICKUP2](https://pickup2.com), a digital freight exchange platform for European logistics.
+Automated blog post generation and multilingual distribution pipeline for [Space 4 Time Ltd](https://space4timeltd.eu), a household removals company moving between the UK and Europe.
+
+Writes evergreen removals content — packing, customs and Transfer of Residence paperwork, costs, planning, and destination guides for the cities and countries the company actually serves — then translates it into the 11 other languages the website ships and publishes each one.
 
 ---
 
@@ -96,7 +98,7 @@ GEMINI_API_KEYS=key1,key2,key3               # Comma-separated, supports multipl
 MINIMAX_API_KEY=your_minimax_api_key
 
 # === SITE ===
-SITE_URL=https://pickup2.com
+SITE_URL=https://space4timeltd.eu
 
 # === SOCIAL MEDIA (all optional) ===
 
@@ -158,8 +160,8 @@ Do **NOT** copy the `.env` file to production. Use your VPS's secrets management
 | Process manager | `pm2 start src/index.js --env production` |
 
 Update these values for production:
-- `BACKEND_URL` -> your production backend URL (e.g. `https://api.pickup2.com`)
-- `SITE_URL` -> `https://pickup2.com`
+- `BACKEND_URL` -> your production backend URL (e.g. `https://api.space4timeltd.eu`)
+- `SITE_URL` -> `https://space4timeltd.eu`
 - `ACCESS_TOKEN_SECRET` -> must match production backend's JWT secret
 
 #### 2. Playwright / Chromium on VPS

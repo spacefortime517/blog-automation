@@ -69,29 +69,34 @@ export class GeminiProvider extends AIProvider {
     const existingList = existingTopics.map((t) => `- ${t}`).join("\n");
     const themeList = config.topicThemes.map((t, i) => `${i + 1}. ${t}`).join("\n");
 
-    const prompt = `You are the content researcher for a European freight-forwarding and road-transport blog. The audience is carriers, freight forwarders and shippers across Europe.
+    const destinationList = config.destinations.join(", ");
+
+    const prompt = `You are the content researcher for a UK <-> Europe removals company blog. The audience is ordinary people moving home or moving abroad — not logistics professionals. Write for someone who has never moved internationally before.
 
 The blog must cover a BALANCED MIX of these editorial themes over time:
 ${themeList}
 
-Search the web for material from the past 7 days. A candidate topic can be either:
-- NEWS: a fresh news event relevant to European logistics, OR
-- PRACTICAL: a timely practical guide or business topic for carriers, forwarders or shippers, tied to current market conditions, season, or a recent change
+Most valuable content here is EVERGREEN, not news. A candidate topic can be:
+- GUIDE: an evergreen practical guide (packing, paperwork, costs, planning, moving day)
+- DESTINATION: a guide to moving to a specific city or country, e.g. "Moving to Sofia", "Moving to Budapest", "Moving to the UK". Draw from these routes the company actually serves: ${destinationList}
+- SEASONAL: something tied to the time of year (winter moves, summer peak, school-year timing)
+- TOPICAL: a genuine recent change that affects people moving between the UK and Europe (customs rules, ToR, border requirements). Only if there really is one — do not invent news.
 
 RULES:
 - Return EXACTLY 6 candidate topics as a JSON array.
 - The candidates MUST span at least 4 DIFFERENT themes from the list above.
-- At MOST 1 candidate may be about digitalization, freight platforms or logistics tech.
-- The existing articles listed below start with the most recently published — actively avoid their themes so consecutive blog posts feel different.
+- AT LEAST 2 candidates must be DESTINATION guides for cities or countries not already covered below.
+- Prefer questions a real customer would type into Google before a move.
+- The existing articles listed below start with the most recently published — actively avoid their themes and destinations so consecutive posts feel different.
 - DO NOT suggest topics that overlap with these existing blog articles:
 ${existingList}
 
 Each object must have:
-- "title": engaging article title (under 80 chars)
-- "summary": 2-3 sentence summary of the news or practical angle
+- "title": engaging article title (under 80 chars), phrased the way a customer would search
+- "summary": 2-3 sentence summary of what the article will actually cover
 - "theme": the theme from the list it belongs to (short phrase)
-- "relevance": score 1-10 (how relevant and useful to European carriers, forwarders and shippers)
-- "sources": array of source names
+- "relevance": score 1-10 (how useful to someone planning a UK <-> Europe move)
+- "sources": array of source names, or an empty array for evergreen guides
 
 Respond with ONLY the JSON array, no markdown fences, no explanation.`;
 
@@ -112,31 +117,30 @@ Respond with ONLY the JSON array, no markdown fences, no explanation.`;
   async generateArticle(topic) {
     logger.info(`Generating English article for: ${topic.title}`);
 
-    const prompt = `Write a professional blog article for Pickup2, a digital freight exchange platform for European logistics.
+    const prompt = `Write a helpful blog article for Space 4 Time Ltd, a removals company moving households between the UK and Europe.
 
-ABOUT PICKUP2 (the only facts you may use when mentioning the platform):
-- Freight exchange where shippers, freight forwarders and carriers post and find loads across Europe (FTL/LTL, multi-stop routes, vehicle requirements, temperature-controlled)
-- Carriers publish available vehicle capacity (fleet offers) to fill empty runs and find return loads
-- Bidding and negotiation on loads and capacity, with built-in real-time chat between companies
-- Company verification (EU VAT/VIES checks, document review) so users deal with verified partners
-- Post-transaction company ratings and reviews
-- Loads can be published to the public exchange or privately to selected partner companies
-- Fleet/vehicle management and team management with roles and per-employee permissions (dispatcher, driver, forwarder, manager)
-- Mobile apps (iOS and Android) with push notifications for bids, chats and deals
-- Free to get started
-Do NOT claim features beyond this list (no tracking, no payment protection, no AI matching).
+ABOUT SPACE 4 TIME (the only facts you may use when mentioning the company):
+- Household removals between the UK and mainland Europe, in both directions
+- Dedicated vans: Luton van (20 m³ / 1,000 kg) and Mega van (38 m³ / 3,000 kg) — the whole van is yours
+- Shared transport (part load): you pay for the space you use, sharing the van with other moves — cheaper, slightly less flexible on dates
+- Professional packing services and packing materials, plus dismantling and reassembling furniture
+- Storage
+- Help with customs paperwork for international moves, including Transfer of Residence (ToR) applications for moves into the UK
+- Free online volume calculator to estimate how much space a move needs
+- Free quotes, and the website is available in 12 languages
+Do NOT claim anything beyond this list — no vehicle tracking, no insurance products, no shipping by sea or air, no office/commercial relocations.
 
 Topic: ${topic.title}
 Context: ${topic.summary}
 ${topic.theme ? `Theme: ${topic.theme}` : ""}
-${topic.sources ? `Sources: ${topic.sources.join(", ")}` : ""}
+${topic.sources && topic.sources.length ? `Sources: ${topic.sources.join(", ")}` : ""}
 
 Requirements:
 - title: engaging, SEO-optimized, under 80 characters
 - description: 150-200 character SEO meta description
 - keywords: 5-8 relevant keywords as a JSON array of strings
-- categories: one or more of ["shippers", "forwarders", "carriers", "managers", "general"]
-- content: 500-700 words MAXIMUM in Markdown format. STRICT limit — do NOT exceed 700 words.
+- categories: one or more of ["moving-guides", "destinations", "packing", "customs", "costs", "company"]
+- content: 700-1000 words in Markdown format.
 
   CONTENT STRUCTURE (follow this EXACTLY):
 
@@ -146,7 +150,7 @@ Requirements:
      Body paragraphs (3-4 sentences each). Bullet lists are OK inside sections.
   4. ## Another Section Heading
      More content. After the 3rd paragraph in the article, include this exact CTA on its own line:
-     <!--BaseButton {"text":"Try Pickup2 Free","color":"#007bff"} -->
+     <!--BaseButton {"text":"Get a Free Quote","color":"#c0862a"} -->
   5. ## Conclusion
      Short closing paragraph (2-3 sentences)
 
@@ -155,12 +159,18 @@ Requirements:
   - Use ## for all section headings. Never use # or ####.
   - Bullet lists (using -) are allowed inside sections, but NEVER immediately after a ### line. Always put a full paragraph between ### and any list.
   - Keep paragraphs concise: 3-4 sentences max.
-  - Professional, informative tone. For news topics, focus on the news and what it means for the reader's business. For practical/guide topics, give concrete, actionable advice a carrier, forwarder or shipper can apply.
-  MENTIONING PICKUP2:
-  - If the topic naturally relates to something in the ABOUT PICKUP2 list (finding loads or capacity, reducing empty runs, verified partners, ratings, negotiating rates, digitalizing transport processes, team/fleet management), weave in ONE brief mention of how Pickup2 helps within a relevant body section — one sentence, woven into the advice or analysis, never salesy.
-  - Additionally, you may mention Pickup2 ONCE in the conclusion (e.g., "platforms like Pickup2 help logistics companies adapt").
-  - If the topic has NO natural connection to a freight exchange, mention Pickup2 ONLY in the conclusion. Never force it.
-  - Maximum 2 mentions total. Do NOT dedicate a section to Pickup2. Only reference capabilities from the ABOUT PICKUP2 list — never invent features.
+
+  TONE AND SUBSTANCE:
+  - Warm, plain and practical. Write for a person, not a business. No jargon.
+  - Be concrete: real numbers, real timelines, real document names. "Apply for ToR at least 3 weeks ahead" beats "apply early".
+  - Acknowledge the stressful parts honestly rather than pretending a move is effortless.
+  - For DESTINATION guides, cover what someone actually needs: typical costs, paperwork and residency basics, neighbourhoods or regions, how long the move takes from the UK, and one or two things people usually get wrong.
+  - Never state customs or immigration rules as guaranteed — say they change and should be checked, and point to the official source where one exists (for example gov.uk for ToR).
+
+  MENTIONING SPACE 4 TIME:
+  - Weave in at most ONE brief mention inside a body section where it genuinely helps (for example choosing between a dedicated van and shared transport, or help with ToR paperwork) — one sentence, part of the advice, never salesy.
+  - You may mention the company ONCE more in the conclusion.
+  - Maximum 2 mentions total. Never dedicate a section to the company. Only reference capabilities from the ABOUT list — never invent services.
 
 - slug: URL-friendly slug (lowercase, hyphens, no special chars, no trailing hyphens)
 
@@ -205,7 +215,7 @@ No markdown fences. No explanation. Just the JSON.`;
     const scenePrompt = await this._callWithRotation(async (ai) => {
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-lite",
-        contents: `Write a single image generation prompt for a blog hero image. The blog article is titled: "${title}". Description: "${description}". Write a detailed scene description that visually represents the specific topic. Use professional stock photo style. Include specific objects, setting, lighting, and perspective. No text in the image. Return ONLY the prompt text, nothing else. Max 150 words.`,
+        contents: `Write a single image generation prompt for a blog hero image on a household removals website. The article is titled: "${title}". Description: "${description}". Write a detailed scene description that visually represents this specific topic — think homes, boxes, furniture, streets and everyday people mid-move, or the destination city where the article is a location guide. Warm, natural daylight, editorial photography style, never a stock-photo cliché of people grinning at the camera. Include specific objects, setting, lighting and perspective. No text, no logos, no lorries on motorways unless the article is genuinely about transport. Return ONLY the prompt text, nothing else. Max 150 words.`,
       });
       return response.text.trim();
     });
@@ -246,8 +256,8 @@ No markdown fences. No explanation. Just the JSON.`;
 CRITICAL RULES:
 1. Preserve ALL markdown formatting exactly (##, **, -, etc.)
 2. Preserve ALL HTML comments exactly as-is, especially <!--BaseButton ... --> tags — do NOT translate or modify them
-3. Translate naturally, not word-for-word. Use professional tone appropriate for ${targetLangName} logistics industry readers.
-4. Keep "Pickup2" as-is (brand name, never translate)
+3. Translate naturally, not word-for-word. Warm, plain language aimed at ordinary people planning a house move — not corporate or technical.
+4. Keep "Space 4 Time" and "Space 4 Time Ltd" as-is (brand name, never translate). Keep official terms that have no local equivalent as-is too, with a short translated gloss in brackets the first time: "Transfer of Residence (ToR)", "gov.uk", "Council Tax".
 5. For the slug: transliterate to ASCII-safe characters (lowercase, hyphens only, no special chars)
 
 English article:
@@ -276,7 +286,7 @@ No markdown fences. No explanation. Just the JSON.`;
     logger.info("Generating social media post text...");
 
     try {
-      const prompt = `Write social media posts for a logistics industry blog article.
+      const prompt = `Write social media posts for a UK <-> Europe household removals blog article. The audience is people planning a move, not logistics professionals. Warm and practical, never corporate.
 
 Article title: "${title}"
 Description: "${description}"

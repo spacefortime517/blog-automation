@@ -6,7 +6,7 @@
  *   node src/translate-one.js <slug>
  *
  * Example:
- *   node src/translate-one.js pickup2-launch-europe-freight-platform
+ *   node src/translate-one.js moving-to-sofia-a-practical-guide
  */
 import "dotenv/config";
 import { config } from "./config.js";

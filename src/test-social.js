@@ -33,7 +33,7 @@ const posts = {
 };
 
 // Use a placeholder image for Instagram (replace with a real S3 URL in production)
-const testImageUrl = "https://images-pickup2.s3.eu-north-1.amazonaws.com/truck-logo-main.webp";
+const testImageUrl = "https://space4timeltd.eu/logo-dark.png";
 
 const platforms = platform === "all" ? ["x", "facebook", "linkedin", "instagram"] : [platform];
 
