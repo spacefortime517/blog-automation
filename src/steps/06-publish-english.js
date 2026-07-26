@@ -1,4 +1,5 @@
 import { getNextId, createArticle } from "../services/backend-api.js";
+import { config } from "../config.js";
 import { logger } from "../utils/logger.js";
 
 /**
@@ -22,6 +23,7 @@ export async function stepPublishEnglish(article, imgUrl) {
     slug: article.slug,
     categories: article.categories,
     imgUrl: imgUrl || "",
+    author: config.author,
   };
 
   try {

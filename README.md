@@ -26,6 +26,8 @@ Required repository secrets (Settings -> Secrets and variables -> Actions):
 | `MINIMAX_API_KEY` | hero image generation |
 | `SITE_URL` | `https://space4timeltd.eu` |
 
+Optional: `BLOG_AUTHOR` overrides the byline, which defaults to `Space4Time`.
+
 ## Schedule
 
 Three posts per week — Monday, Wednesday and Friday at 09:00 CET — published to

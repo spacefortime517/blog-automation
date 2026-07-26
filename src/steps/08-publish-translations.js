@@ -1,6 +1,7 @@
 import { createArticle } from "../services/backend-api.js";
 import { logger } from "../utils/logger.js";
 import { sleep } from "../utils/retry.js";
+import { config } from "../config.js";
 
 /**
  * Step 8: Publish all translated articles via the admin API.
@@ -37,6 +38,8 @@ export async function stepPublishTranslations(
       slug: translation.slug,
       categories: englishArticle.categories,
       imgUrl: imgUrl || "",
+      // Same byline in every language — the brand name is not translated.
+      author: config.author,
     };
 
     try {

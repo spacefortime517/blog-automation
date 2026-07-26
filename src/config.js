@@ -25,6 +25,10 @@ export const config = {
   enableSocial: process.env.ENABLE_SOCIAL === "true",
   geminiApiKeys: process.env.GEMINI_API_KEYS.split(",").map((k) => k.trim()),
   siteUrl: process.env.SITE_URL || "https://space4timeltd.eu",
+  // Byline for every generated article. Sent explicitly rather than leaning on
+  // the server's fallback, so changing that default cannot silently rewrite the
+  // author on everything this pipeline has published.
+  author: process.env.BLOG_AUTHOR || "Space4Time",
 
   // X/Twitter
   x: {
