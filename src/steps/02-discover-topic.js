@@ -4,7 +4,7 @@ import { withRetry } from "../utils/retry.js";
 const MAX_DISCOVERY_ATTEMPTS = 3;
 
 /**
- * Step 2: Discover a fresh EU logistics news topic.
+ * Step 2: Discover a fresh UK–Europe removals topic.
  * Uses AI with web grounding to find news not already on the blog.
  * Validates each candidate against existing articles for semantic similarity.
  * @param {object} ai - AIProvider instance
@@ -12,7 +12,7 @@ const MAX_DISCOVERY_ATTEMPTS = 3;
  * @returns {object} Selected topic { title, summary, relevance, sources }
  */
 export async function stepDiscoverTopic(ai, existingArticles) {
-  logger.step(2, "Discovering latest EU logistics news topic...");
+  logger.step(2, "Discovering a removals topic...");
 
   const existingTopics = existingArticles.map(
     (a) => `${a.title} — ${a.description || ""}`

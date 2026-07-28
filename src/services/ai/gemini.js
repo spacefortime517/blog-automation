@@ -64,7 +64,7 @@ export class GeminiProvider extends AIProvider {
   }
 
   async searchNews(existingTopics) {
-    logger.info("Searching for latest EU logistics topics via Gemini + Google Search...");
+    logger.info("Searching for latest UK–Europe removals topics via Gemini + Google Search...");
 
     const existingList = existingTopics.map((t) => `- ${t}`).join("\n");
     const themeList = config.topicThemes.map((t, i) => `${i + 1}. ${t}`).join("\n");
@@ -349,7 +349,7 @@ A topic is "too similar" if:
 - A reader would feel they're reading the same story again
 
 A topic is NOT too similar if:
-- It covers the same broad category (e.g. both about EU logistics) but different specific events
+- It covers the same broad category (e.g. both about customs paperwork) but different specific events
 - It provides a genuinely new angle or update on a developing story with significant new information
 
 Return ONLY a JSON object:
