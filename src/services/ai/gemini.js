@@ -27,7 +27,9 @@ export class GeminiProvider extends AIProvider {
     for (let keyAttempt = 0; keyAttempt < maxKeyAttempts; keyAttempt++) {
       for (let retry = 0; retry < maxTransientRetries; retry++) {
         try {
-          return await fn(this._getClient());
+          const value = await fn(this._getClient());
+          this.rotator.noteSuccess();
+          return value;
         } catch (error) {
           const msg = error.message || "";
           const status = error.status || 0;
@@ -35,8 +37,10 @@ export class GeminiProvider extends AIProvider {
           // Rate limited → rotate key
           const is429 = status === 429 || msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED");
           if (is429) {
-            if (this.rotator.rotate()) {
-              logger.warn("Rate limited, switched to next API key");
+            // rotate() now waits out the per-minute limit when every key is
+            // cooling, so this can block for up to a minute rather than
+            // failing straight through.
+            if (await this.rotator.rotate()) {
               await sleep(2000);
             }
             break; // break retry loop, continue key loop

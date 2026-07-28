@@ -31,6 +31,8 @@ const singleLang = args.find((a) => a.startsWith("--language="))?.split("=")[1]
 
 async function main() {
   const startTime = Date.now();
+  // Set when the article went out incomplete; turned into a non-zero exit below.
+  let publishIncomplete = null;
   logger.info("=== BlogAutomation Pipeline Starting ===");
   if (dryRun) logger.info("DRY RUN MODE — no publishing, no social media");
   logger.info(
@@ -68,6 +70,9 @@ async function main() {
 
   // Step 4: Generate hero image
   const imageBuffer = await stepGenerateImage(ai, article.title, article.description);
+  if (!imageBuffer) {
+    logger.warn("No hero image was generated — the article will publish without one");
+  }
 
   // Step 5: Upload image
   const imgUrl = await stepUploadImage(imageBuffer, article.slug);
@@ -88,7 +93,19 @@ async function main() {
     }
 
     const translations = await stepTranslate(ai, article);
-    await stepPublishTranslations(translations, articleId, article, imgUrl);
+    const result = await stepPublishTranslations(translations, articleId, article, imgUrl);
+
+    // A run that publishes the English article and none of the translations
+    // has produced a half-finished post on a twelve-language site. Exiting 0
+    // for that hides it behind a green tick in Actions, which is how the first
+    // live run looked fine while shipping English-only and no image.
+    if (targetLangs.length && result.published === 0) {
+      publishIncomplete = `${article.slug}: English is live but 0 of ${targetLangs.length} translations published`;
+    } else if (result.published < targetLangs.length) {
+      logger.warn(
+        `Only ${result.published}/${targetLangs.length} translations published — the rest can be backfilled`
+      );
+    }
 
     // Restore config
     if (singleLang) {
@@ -126,6 +143,17 @@ async function main() {
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+
+  if (publishIncomplete) {
+    logger.error(`\n=== Pipeline finished INCOMPLETE in ${elapsed}s ===`);
+    logger.error(publishIncomplete);
+    logger.error(`Article: ${articleUrl}`);
+    // Non-zero so Actions shows red. The English article is live either way —
+    // this is a flag to go and backfill, not a signal that nothing happened.
+    process.exitCode = 1;
+    return;
+  }
+
   logger.info(`\n=== Pipeline completed successfully in ${elapsed}s ===`);
   logger.info(`Article: ${articleUrl}`);
 }
