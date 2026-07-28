@@ -68,51 +68,71 @@ async function main() {
     return;
   }
 
+  // Which languages this article has to exist in before anything goes live.
+  const targetLangs = singleLang
+    ? singleLang === "en"
+      ? []
+      : [singleLang]
+    : config.targetLanguages;
+
   // Step 4: Generate hero image
   const imageBuffer = await stepGenerateImage(ai, article.title, article.description);
   if (!imageBuffer) {
-    logger.warn("No hero image was generated — the article will publish without one");
+    // Publishing without one doesn't mean "no picture" — the website falls back
+    // to /images/blog/default.jpg, the stock shot of our two vans, on every
+    // card and every language. One generic image on every post is worse than
+    // waiting for the next run.
+    throw new Error(
+      "No hero image was generated — refusing to publish, the site would show the default van photo instead"
+    );
   }
 
   // Step 5: Upload image
   const imgUrl = await stepUploadImage(imageBuffer, article.slug);
 
-  // Step 6: Publish English article
-  const { articleId } = await stepPublishEnglish(article, imgUrl);
-
-  // Step 7 & 8: Translate and publish (unless single language mode)
-  if (!singleLang || singleLang !== "en") {
-    const targetLangs = singleLang
-      ? [singleLang]
-      : config.targetLanguages;
-
-    // Filter config for single language mode
-    const origTargetLangs = config.targetLanguages;
-    if (singleLang) {
-      config.targetLanguages = targetLangs;
+  // Step 6: Translate BEFORE anything is published.
+  //
+  // The order used to be publish-English-then-translate, which meant a failure
+  // in translation left a finished English post on a site that serves twelve
+  // languages — the other eleven showing "no articles found" while English had
+  // one. Translating first makes the whole article all-or-nothing: if it can't
+  // be produced in every language it isn't published in any, and the next run
+  // tries again.
+  let translations = [];
+  const origTargetLangs = config.targetLanguages;
+  if (targetLangs.length) {
+    if (singleLang) config.targetLanguages = targetLangs;
+    try {
+      translations = await stepTranslate(ai, article);
+    } finally {
+      if (singleLang) config.targetLanguages = origTargetLangs;
     }
 
-    const translations = await stepTranslate(ai, article);
-    const result = await stepPublishTranslations(translations, articleId, article, imgUrl);
-
-    // A run that publishes the English article and none of the translations
-    // has produced a half-finished post on a twelve-language site. Exiting 0
-    // for that hides it behind a green tick in Actions, which is how the first
-    // live run looked fine while shipping English-only and no image.
-    if (targetLangs.length && result.published === 0) {
-      publishIncomplete = `${article.slug}: English is live but 0 of ${targetLangs.length} translations published`;
-    } else if (result.published < targetLangs.length) {
-      logger.warn(
-        `Only ${result.published}/${targetLangs.length} translations published — the rest can be backfilled`
+    if (translations.length < targetLangs.length) {
+      const missing = targetLangs.filter(
+        (l) => !translations.some((t) => t.language === l)
       );
-    }
-
-    // Restore config
-    if (singleLang) {
-      config.targetLanguages = origTargetLangs;
+      throw new Error(
+        `Only ${translations.length}/${targetLangs.length} translations succeeded ` +
+          `(missing: ${missing.join(", ")}) — refusing to publish an article that ` +
+          `would exist in some languages and not others`
+      );
     }
   } else {
     logger.info("Single language mode (en), skipping translations.");
+  }
+
+  // Step 7: Publish English
+  const { articleId } = await stepPublishEnglish(article, imgUrl);
+
+  // Step 8: Publish the translations that are already in hand
+  if (translations.length) {
+    const result = await stepPublishTranslations(translations, articleId, article, imgUrl);
+    if (result.published < translations.length) {
+      publishIncomplete =
+        `${article.slug}: ${result.published}/${translations.length} translations published — ` +
+        `the article is live but incomplete, backfill the rest`;
+    }
   }
 
   // Step 9: Social media
