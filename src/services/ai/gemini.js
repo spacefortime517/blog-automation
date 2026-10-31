@@ -338,7 +338,7 @@ No markdown fences. No explanation. Just the JSON.`;
       .map((a, i) => `${i + 1}. "${a.title}" — ${a.description || ""}`)
       .join("\n");
 
-    const prompt = `You are a duplicate content detector. Compare this candidate blog topic against existing published articles and determine if it covers the SAME or VERY SIMILAR news/subject.
+    const prompt = `You are checking whether a proposed article for a UK <-> Europe removals blog would duplicate one already published. The blog deliberately publishes many articles in the same format — one guide per destination city or country, one guide per paperwork or packing question — so sharing a format, a theme or a few words with an existing article is expected and is NOT duplication.
 
 CANDIDATE TOPIC:
 Title: "${candidateTitle}"
@@ -347,20 +347,22 @@ Summary: "${candidateSummary}"
 EXISTING PUBLISHED ARTICLES:
 ${articleList}
 
-A topic is "too similar" if:
-- It covers the same specific news event or announcement
-- It would substantially repeat information already in an existing article
-- A reader would feel they're reading the same story again
+It IS a duplicate only if a reader who already read one existing article would learn little new from the candidate, because it answers the same question for the same place, e.g.:
+- "Moving to Amsterdam from the UK" vs "Relocating to Amsterdam: a guide for Brits"
+- "UK to Europe removal costs" vs "How much does a UK to Europe move cost?"
 
-A topic is NOT too similar if:
-- It covers the same broad category (e.g. both about customs paperwork) but different specific events
-- It provides a genuinely new angle or update on a developing story with significant new information
+It is NOT a duplicate when:
+- It is about a different destination city or country, even if the existing article uses the same format ("Moving to Prague" vs "Moving to Amsterdam", "Moving to Germany" vs "Moving to Portugal")
+- It answers a different question within the same theme (choosing a removals company vs removal costs; customs inventory vs restricted items; banking and healthcare after the move vs proof of address)
+- It covers a different stage of the move, a different audience, a different season, or a genuinely new rule change
+
+Scoring: 0 = unrelated, 50 = same theme but a different question or place, 80 = same question for the same place, 100 = identical.
 
 Return ONLY a JSON object:
 {
   "isSimilar": true/false,
-  "score": <0-100 similarity score, 0=completely different, 100=identical topic>,
-  "matchedTitle": "<title of the most similar existing article, or null>",
+  "score": <0-100 as defined above>,
+  "matchedTitle": "<title of the closest existing article, or null>",
   "reason": "<brief explanation>"
 }
 
@@ -375,10 +377,10 @@ No markdown fences. No explanation outside the JSON.`;
     });
 
     const parsed = this._parseJSON(result);
-    // Treat score >= 60 as too similar
-    if (parsed.score >= 60) {
-      parsed.isSimilar = true;
-    }
+    // The score decides, not the model's own yes/no: at the old cut-off of 60,
+    // every new destination guide was rejected as a copy of an existing one
+    // and runs failed with "No unique topic found".
+    parsed.isSimilar = Number(parsed.score) >= 80;
     return parsed;
   }
 
