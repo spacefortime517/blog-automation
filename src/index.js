@@ -13,6 +13,7 @@ import { stepPublishEnglish } from "./steps/06-publish-english.js";
 import { stepTranslate } from "./steps/07-translate.js";
 import { stepPublishTranslations } from "./steps/08-publish-translations.js";
 import { stepSocialMedia } from "./steps/09-social-media.js";
+import { submitToIndexNow } from "./services/indexnow.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PENDING_FILE = join(__dirname, "../data/pending-social.json");
@@ -126,8 +127,10 @@ async function main() {
   const { articleId } = await stepPublishEnglish(article, imgUrl);
 
   // Step 8: Publish the translations that are already in hand
+  let publishedTranslations = [];
   if (translations.length) {
     const result = await stepPublishTranslations(translations, articleId, article, imgUrl);
+    publishedTranslations = result.publishedLanguages;
     if (result.published < translations.length) {
       publishIncomplete =
         `${article.slug}: ${result.published}/${translations.length} translations published — ` +
@@ -137,6 +140,12 @@ async function main() {
 
   // Step 9: Social media
   const articleUrl = `${config.siteUrl}/blog/${article.slug}`;
+
+  // Tell Bing & co. about the new pages straight away. Never fails the run.
+  await submitToIndexNow([
+    articleUrl,
+    ...publishedTranslations.map((t) => `${config.siteUrl}/${t.language}/blog/${t.slug}`),
+  ]);
   if (socialEnabled) {
     if (args.includes("--post-now")) {
       // Post immediately to all platforms (legacy behavior, no pending file)

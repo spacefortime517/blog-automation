@@ -10,7 +10,7 @@ import { config } from "../config.js";
  * @param {string} articleId - The shared article ID from step 6
  * @param {object} englishArticle - Original English article (for categories, imgUrl fallback)
  * @param {string} imgUrl - Image URL from step 5
- * @returns {object} { published: number, skipped: number, failed: number }
+ * @returns {object} { published, skipped, failed, publishedLanguages: the translations that went live }
  */
 export async function stepPublishTranslations(
   translations,
@@ -26,6 +26,7 @@ export async function stepPublishTranslations(
   let published = 0;
   let skipped = 0;
   let failed = 0;
+  const publishedLanguages = [];
 
   for (const translation of translations) {
     const payload = {
@@ -45,6 +46,7 @@ export async function stepPublishTranslations(
     try {
       await createArticle(payload);
       published++;
+      publishedLanguages.push(translation);
       logger.info(`  Published ${translation.language}: "${translation.title}"`);
     } catch (error) {
       if (error.status === 409) {
@@ -66,5 +68,5 @@ export async function stepPublishTranslations(
     8,
     `Translations done: ${published} published, ${skipped} skipped, ${failed} failed`
   );
-  return { published, skipped, failed };
+  return { published, skipped, failed, publishedLanguages };
 }
