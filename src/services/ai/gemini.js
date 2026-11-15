@@ -141,7 +141,7 @@ ${topic.sources && topic.sources.length ? `Sources: ${topic.sources.join(", ")}`
 
 Requirements:
 - title: engaging, SEO-optimized, under 80 characters
-- description: 150-200 character SEO meta description
+- description: SEO meta description of 130-155 characters (Google cuts anything longer); include the main keyword and end with a reason to read
 - keywords: 5-8 relevant keywords as a JSON array of strings
 - categories: one or more of ["moving-guides", "destinations", "packing", "customs", "costs", "company"]
 - content: 700-1000 words in Markdown format.
@@ -263,6 +263,7 @@ CRITICAL RULES:
 3. Translate naturally, not word-for-word. Warm, plain language aimed at ordinary people planning a house move — not corporate or technical.
 4. Keep "Space 4 Time" and "Space 4 Time Ltd" as-is (brand name, never translate). Keep official terms that have no local equivalent as-is too, with a short translated gloss in brackets the first time: "Transfer of Residence (ToR)", "gov.uk", "Council Tax".
 5. For the slug: transliterate to ASCII-safe characters (lowercase, hyphens only, no special chars)
+6. The translated description must be 130-155 characters long; shorten it rather than going over
 
 English article:
 Title: ${article.title}
